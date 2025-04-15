@@ -124,6 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 加载所有书签
     function loadBookmarks() {
         const data = getBookmarksData();
+        // 默认显示所有书签，按点击次数排序
         displayBookmarks(data.bookmarks);
     }
     
@@ -136,6 +137,13 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = '<div class="col-12 text-center my-5"><h4>此分类下还没有书签</h4></div>';
             return;
         }
+        
+        // 根据点击次数排序
+        bookmarks.sort((a, b) => {
+            const aClicks = parseInt(localStorage.getItem(`clicks_${a.id}`) || '0');
+            const bClicks = parseInt(localStorage.getItem(`clicks_${b.id}`) || '0');
+            return bClicks - aClicks;
+        });
         
         bookmarks.forEach(bookmark => {
             const card = document.createElement('div');
@@ -176,19 +184,50 @@ document.addEventListener('DOMContentLoaded', function() {
                 iconHtml = `<i class="bi bi-globe bookmark-icon"></i>`;
             }
             
+            // 获取点击次数
+            const clicks = parseInt(localStorage.getItem(`clicks_${bookmark.id}`) || '0');
+            
             card.innerHTML = `
                 <div class="card bookmark-card h-100 text-center p-3">
                     <div class="card-body">
                         ${iconHtml}
                         <h5 class="bookmark-title">${bookmark.title}</h5>
                         <p class="bookmark-description">${bookmark.description || ''}</p>
-                        <a href="${bookmark.url}" target="_blank" class="btn btn-sm btn-primary mt-2">访问</a>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <a href="${bookmark.url}" target="_blank" class="btn btn-sm btn-primary" id="visit_${bookmark.id}">访问</a>
+                            <small class="text-muted">访问次数: <span id="clicks_${bookmark.id}">${clicks}</span></small>
+                        </div>
                     </div>
                 </div>
             `;
             
             container.appendChild(card);
+            
+            // 为访问按钮添加点击事件
+            const visitButton = document.getElementById(`visit_${bookmark.id}`);
+            visitButton.addEventListener('click', function(e) {
+                e.preventDefault(); // 阻止默认行为
+                incrementClicks(bookmark.id);
+                window.open(bookmark.url, '_blank'); // 在新标签页打开链接
+            });
         });
+    }
+    
+    // 增加点击计数
+    function incrementClicks(bookmarkId) {
+        const clicks = parseInt(localStorage.getItem(`clicks_${bookmarkId}`) || '0');
+        const newClicks = clicks + 1;
+        localStorage.setItem(`clicks_${bookmarkId}`, newClicks.toString());
+        
+        // 更新显示的点击次数
+        const clicksElement = document.getElementById(`clicks_${bookmarkId}`);
+        if (clicksElement) {
+            clicksElement.textContent = newClicks;
+        }
+        
+        // 重新排序书签
+        const data = getBookmarksData();
+        displayBookmarks(data.bookmarks);
     }
     
     // 获取书签数据（从localStorage或示例数据）
