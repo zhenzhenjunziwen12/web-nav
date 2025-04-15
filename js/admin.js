@@ -340,13 +340,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let categoryId = categorySelect.value;
         let subcategoryId = subcategorySelect.value;
         const description = descriptionInput.value.trim();
-        const icon = iconInput.value.trim();
+        let icon = iconInput.value.trim();
         
         // 验证必填字段
         if (!title || !url) {
             alert('请填写网站名称和链接！');
             return;
         }
+        
+        // 处理URL格式
+        const formattedUrl = url.startsWith('http') ? url : 'https://' + url;
         
         // 处理新分类
         if (categoryId === 'new') {
@@ -401,39 +404,163 @@ document.addEventListener('DOMContentLoaded', function() {
         const newBookmark = {
             id: 'bm' + (data.bookmarks.length + 1),
             title: title,
-            url: url.startsWith('http') ? url : 'https://' + url,
+            url: formattedUrl,
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             description: description,
-            icon: icon
+            icon: icon || 'bi-globe' // 默认图标
         };
         
+        // 如果用户没有指定图标，尝试获取网站favicon
+        if (!icon) {
+            // 显示保存中提示
+            const saveButton = document.querySelector('#bookmarkForm button[type="submit"]');
+            const originalText = saveButton.innerText;
+            saveButton.innerText = '保存中...';
+            saveButton.disabled = true;
+            
+            // 从URL中提取域名
+            let domain;
+            try {
+                domain = new URL(formattedUrl).hostname;
+            } catch (e) {
+                console.error('URL解析错误:', e);
+                domain = formattedUrl.replace(/^https?:\/\//, '').split('/')[0];
+            }
+            
+            // 尝试获取网站favicon
+            getFavicon(domain)
+                .then(iconClass => {
+                    if (iconClass) {
+                        newBookmark.icon = iconClass;
+                    }
+                    // 无论成功与否都保存书签
+                    finalizeBookmarkSave(data, newBookmark);
+                    resetForm();
+                    saveButton.innerText = originalText;
+                    saveButton.disabled = false;
+                })
+                .catch(err => {
+                    console.error('获取favicon失败:', err);
+                    // 出错时也保存书签，使用默认图标
+                    finalizeBookmarkSave(data, newBookmark);
+                    resetForm();
+                    saveButton.innerText = originalText;
+                    saveButton.disabled = false;
+                });
+        } else {
+            // 用户指定了图标，直接保存
+            finalizeBookmarkSave(data, newBookmark);
+            resetForm();
+        }
+        
+        function resetForm() {
+            // 重置表单
+            titleInput.value = '';
+            urlInput.value = '';
+            categorySelect.selectedIndex = 0;
+            subcategorySelect.innerHTML = `
+                <option value="">选择已有二级分类</option>
+                <option value="new">创建新二级分类</option>
+            `;
+            newCategoryInput.value = '';
+            newSubcategoryInput.value = '';
+            descriptionInput.value = '';
+            iconInput.value = '';
+            document.getElementById('newCategoryDiv').style.display = 'none';
+            document.getElementById('newSubCategoryDiv').style.display = 'none';
+        }
+    }
+    
+    // 完成书签保存过程
+    async function finalizeBookmarkSave(data, newBookmark) {
         // 添加到数据
         data.bookmarks.push(newBookmark);
         
         // 保存数据
-        saveBookmarksData(data);
-        
-        // 重置表单
-        titleInput.value = '';
-        urlInput.value = '';
-        categorySelect.selectedIndex = 0;
-        subcategorySelect.innerHTML = `
-            <option value="">选择已有二级分类</option>
-            <option value="new">创建新二级分类</option>
-        `;
-        newCategoryInput.value = '';
-        newSubcategoryInput.value = '';
-        descriptionInput.value = '';
-        iconInput.value = '';
-        document.getElementById('newCategoryDiv').style.display = 'none';
-        document.getElementById('newSubCategoryDiv').style.display = 'none';
+        await saveBookmarksData(data);
         
         // 刷新分类和书签列表
         loadCategories();
         loadBookmarkList();
         
-        alert('书签添加成功！');
+        // 显示成功消息
+        const syncMessage = document.getElementById('syncMessage');
+        if (syncMessage) {
+            const originalText = syncMessage.innerText;
+            syncMessage.innerText = '书签添加成功！';
+            setTimeout(() => {
+                syncMessage.innerText = originalText;
+            }, 3000);
+        } else {
+            alert('书签添加成功！');
+        }
+    }
+    
+    // 获取网站favicon
+    async function getFavicon(domain) {
+        try {
+            // 首先尝试使用Google的favicon服务
+            // 检查图标是否存在
+            const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+            
+            // 因为我们不能直接检查图片是否加载成功，我们将使用自定义图标
+            // 为常见网站匹配Bootstrap图标
+            const iconMappings = {
+                'google.com': 'bi-google',
+                'gmail.com': 'bi-envelope-fill',
+                'youtube.com': 'bi-youtube',
+                'github.com': 'bi-github',
+                'twitter.com': 'bi-twitter',
+                'facebook.com': 'bi-facebook',
+                'instagram.com': 'bi-instagram',
+                'linkedin.com': 'bi-linkedin',
+                'pinterest.com': 'bi-pinterest',
+                'reddit.com': 'bi-reddit',
+                'amazon.com': 'bi-cart-fill',
+                'netflix.com': 'bi-film',
+                'microsoft.com': 'bi-microsoft',
+                'apple.com': 'bi-apple',
+                'spotify.com': 'bi-spotify',
+                'dropbox.com': 'bi-dropbox',
+                'slack.com': 'bi-slack',
+                'yahoo.com': 'bi-chat-fill',
+                'twitch.tv': 'bi-twitch',
+                'paypal.com': 'bi-paypal',
+                'whatsapp.com': 'bi-whatsapp',
+                'telegram.org': 'bi-telegram',
+                'stackoverflow.com': 'bi-stack-overflow',
+                'medium.com': 'bi-medium',
+                'discord.com': 'bi-discord',
+                'trello.com': 'bi-trello',
+                'notion.so': 'bi-file-earmark-text',
+                'figma.com': 'bi-vector-pen',
+                'behance.net': 'bi-behance',
+                'dribbble.com': 'bi-dribbble',
+                'gitlab.com': 'bi-gitlab',
+                'bitbucket.org': 'bi-git',
+                'baidu.com': 'bi-search',
+                'bilibili.com': 'bi-play-circle',
+                'jd.com': 'bi-shop',
+                'taobao.com': 'bi-bag',
+                'alipay.com': 'bi-wallet2',
+                'weibo.com': 'bi-chat-quote',
+                'zhihu.com': 'bi-question-circle'
+            };
+            
+            // 检查域名是否在我们的映射中
+            for (const [key, value] of Object.entries(iconMappings)) {
+                if (domain.includes(key)) {
+                    return value;
+                }
+            }
+            
+            // 对于大多数网站，使用有效的favicon的URL作为图标
+            return 'bi-globe';
+        } catch (e) {
+            console.error('获取favicon时出错:', e);
+            return 'bi-globe'; // 默认图标
+        }
     }
     
     // 修改密码
