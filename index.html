@@ -7,6 +7,27 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* 为了确保背景图片显示清晰，添加一些额外样式 */
+        #background-container {
+            background-position: center center;
+            background-attachment: fixed;
+            will-change: transform; /* 性能优化 */
+            backface-visibility: hidden; /* 性能优化 */
+        }
+        
+        /* 提高主内容区对比度 */
+        .main-content {
+            background-color: rgba(255, 255, 255, 0.97);
+            /* 移除模糊效果 */
+        }
+        
+        /* 确保卡片完全不透明 */
+        .bookmark-card {
+            background-color: #ffffff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
 <body>
     <!-- 背景容器 -->
@@ -16,7 +37,7 @@
         <div class="row">
             <!-- 侧边栏导航 -->
             <div class="col-md-2 sidebar">
-                <h3 class="my-4">振振君子</h3>
+                <h3 class="my-4" id="siteTitle">振振君子</h3>
                 <div class="accordion" id="categoryAccordion">
                     <!-- 侧边栏内容将由JavaScript动态生成 -->
                 </div>
@@ -52,13 +73,8 @@
         </div>
     </div>
 
-    <!-- 管理页面的入口按钮 -->
-    <a href="admin.html" class="btn btn-primary admin-btn position-fixed bottom-0 end-0 m-3">
-        <i class="bi bi-gear-fill"></i> 管理
-    </a>
-
     <!-- 背景设置按钮 -->
-    <button id="bgSettingBtn" class="btn btn-secondary position-fixed bottom-0 end-0 me-5 m-3">
+    <button id="bgSettingBtn" class="btn btn-secondary position-fixed bottom-0 end-0 m-3">
         <i class="bi bi-palette"></i> 背景设置
     </button>
 
@@ -107,6 +123,15 @@
                                 <label for="bgDim" class="form-label">暗化效果: <span id="dimValue">0%</span></label>
                                 <input type="range" class="form-range" id="bgDim" min="0" max="80" value="0">
                             </div>
+                            <div class="mb-3">
+                                <p>推荐背景图片:</p>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <img src="https://source.unsplash.com/random/100x60?nature" alt="自然风景" class="img-thumbnail preset-bg" data-url="https://source.unsplash.com/random/1920x1080?nature">
+                                    <img src="https://source.unsplash.com/random/100x60?city" alt="城市风光" class="img-thumbnail preset-bg" data-url="https://source.unsplash.com/random/1920x1080?city">
+                                    <img src="https://source.unsplash.com/random/100x60?abstract" alt="抽象图案" class="img-thumbnail preset-bg" data-url="https://source.unsplash.com/random/1920x1080?abstract">
+                                    <img src="https://source.unsplash.com/random/100x60?technology" alt="科技" class="img-thumbnail preset-bg" data-url="https://source.unsplash.com/random/1920x1080?technology">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -121,5 +146,73 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/main.js"></script>
     <script src="js/background.js"></script>
+    <script>
+        // 添加隐藏的管理员入口
+        document.addEventListener('DOMContentLoaded', function() {
+            // 键盘输入方式
+            let adminAccessKey = '';
+            const secretKey = 'admin'; // 隐藏的激活密钥
+            
+            // 监听键盘输入
+            document.addEventListener('keydown', function(event) {
+                // 记录最后5个键入的字符
+                adminAccessKey += event.key;
+                if (adminAccessKey.length > 5) {
+                    adminAccessKey = adminAccessKey.substring(adminAccessKey.length - 5);
+                }
+                
+                // 检查是否输入了隐藏的激活密钥
+                if (adminAccessKey.includes(secretKey)) {
+                    adminAccessKey = ''; // 重置
+                    window.location.href = 'login.html'; // 跳转到登录页面
+                }
+            });
+            
+            // 双击网站标题进入管理页面
+            const siteTitle = document.getElementById('siteTitle');
+            siteTitle.style.cursor = 'pointer'; // 改变鼠标样式，暗示可点击
+            
+            siteTitle.addEventListener('dblclick', function() {
+                window.location.href = 'login.html'; // 跳转到登录页面
+            });
+            
+            // 添加预设背景点击事件
+            document.querySelectorAll('.preset-bg').forEach(img => {
+                img.addEventListener('click', function() {
+                    const url = this.getAttribute('data-url');
+                    document.getElementById('bgImageUrl').value = url;
+                    // 高亮选中的预设图片
+                    document.querySelectorAll('.preset-bg').forEach(i => i.classList.remove('border-primary'));
+                    this.classList.add('border-primary');
+                });
+            });
+            
+            // 设置默认背景图片（如果用户还没有设置过）
+            if (!localStorage.getItem('bgSettings')) {
+                const defaultBgSettings = {
+                    type: 'image',
+                    color: '#f8f9fa',
+                    opacity: 100,
+                    imageSource: 'url',
+                    imageData: 'https://source.unsplash.com/random/1920x1080?nature',
+                    blur: 0,
+                    dim: 15 // 稍微暗化一点，以便内容更加清晰
+                };
+                localStorage.setItem('bgSettings', JSON.stringify(defaultBgSettings));
+                
+                // 如果background.js已经加载，应用设置
+                if (typeof applyBgSettingsToUI === 'function') {
+                    applyBgSettingsToUI();
+                } else {
+                    // 否则，直接应用默认背景
+                    document.getElementById('background-container').style.backgroundImage = `url('${defaultBgSettings.imageData}')`;
+                    if (defaultBgSettings.dim > 0) {
+                        const dimAmount = 1 - (defaultBgSettings.dim / 100);
+                        document.getElementById('background-container').style.filter = `brightness(${dimAmount})`;
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html> 
