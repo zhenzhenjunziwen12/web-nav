@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let categoryId = categorySelect.value;
         let subcategoryId = subcategorySelect.value;
         const description = descriptionInput.value.trim();
-        let icon = iconInput.value.trim();
+        const iconValue = iconInput.value.trim();
         
         // 验证必填字段
         if (!title || !url) {
@@ -424,6 +424,13 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // 获取网站图标
+        const favicon = getFavicon(formattedUrl);
+        const bookmarkIcon = {
+            type: 'favicon',
+            value: favicon
+        };
+        
         // 创建新书签
         const newBookmark = {
             id: 'bm' + (data.bookmarks.length + 1),
@@ -432,11 +439,11 @@ document.addEventListener('DOMContentLoaded', function() {
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             description: description,
-            icon: icon || { type: 'bootstrap', value: 'bi-globe' } // 修改为对象格式
+            icon: bookmarkIcon
         };
         
         // 如果用户没有指定图标，尝试获取网站favicon
-        if (!icon) {
+        if (!iconValue) {
             // 显示保存中提示
             const saveButton = document.querySelector('#bookmarkForm button[type="submit"]');
             const originalText = saveButton.innerText;
@@ -474,11 +481,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         } else {
             // 用户指定了图标，将其转换为对象格式
-            if (typeof icon === 'string') {
-                if (icon.startsWith('bi-')) {
-                    newBookmark.icon = { type: 'bootstrap', value: icon };
-                } else if (icon.startsWith('http') || icon.startsWith('data:')) {
-                    newBookmark.icon = { type: 'favicon', value: icon };
+            if (typeof iconValue === 'string') {
+                if (iconValue.startsWith('bi-')) {
+                    newBookmark.icon = { type: 'bootstrap', value: iconValue };
+                } else if (iconValue.startsWith('http') || iconValue.startsWith('data:')) {
+                    newBookmark.icon = { type: 'favicon', value: iconValue };
                 }
             }
             // 直接保存
@@ -578,7 +585,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 检查域名是否在预定义的映射中
             for (const [key, value] of Object.entries(iconMappings)) {
                 if (domain.includes(key)) {
-                    return { type: 'bootstrap', value: value };
+                    return value;
                 }
             }
             
@@ -586,10 +593,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
             
             // 返回实际的favicon URL
-            return { type: 'favicon', value: faviconUrl };
+            return faviconUrl;
         } catch (e) {
             console.error('获取favicon时出错:', e);
-            return { type: 'bootstrap', value: 'bi-globe' }; // 默认图标
+            return 'https://www.google.com/s2/favicons?domain=example.com&sz=64'; // 默认图标
         }
     }
     

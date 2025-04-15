@@ -145,8 +145,14 @@ document.addEventListener('DOMContentLoaded', function() {
             let iconHtml = '';
             if (bookmark.icon) {
                 if (typeof bookmark.icon === 'object' && bookmark.icon.type === 'favicon') {
-                    // 使用实际的favicon图像
-                    iconHtml = `<img src="${bookmark.icon.value}" alt="${bookmark.title}" class="bookmark-icon mb-3" style="width: 48px; height: 48px;">`;
+                    // 使用实际的favicon图像，添加错误处理
+                    iconHtml = `
+                        <img src="${bookmark.icon.value.google}" 
+                             onerror="this.onerror=null; this.src='${bookmark.icon.value.site || bookmark.icon.value.google}';" 
+                             alt="${bookmark.title}" 
+                             class="bookmark-icon mb-3" 
+                             style="width: 48px; height: 48px; object-fit: contain;">
+                    `;
                 } else if (typeof bookmark.icon === 'object' && bookmark.icon.type === 'bootstrap') {
                     // 使用Bootstrap图标
                     iconHtml = `<i class="bi ${bookmark.icon.value} bookmark-icon"></i>`;
@@ -155,7 +161,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     iconHtml = `<i class="bi ${bookmark.icon} bookmark-icon"></i>`;
                 } else if (typeof bookmark.icon === 'string' && (bookmark.icon.startsWith('http') || bookmark.icon.startsWith('data:'))) {
                     // 兼容旧数据，使用图像URL
-                    iconHtml = `<img src="${bookmark.icon}" alt="${bookmark.title}" class="bookmark-icon mb-3" style="width: 48px; height: 48px;">`;
+                    iconHtml = `
+                        <img src="${bookmark.icon}" 
+                             alt="${bookmark.title}" 
+                             class="bookmark-icon mb-3" 
+                             style="width: 48px; height: 48px; object-fit: contain;">
+                    `;
                 } else {
                     // 默认使用全球图标
                     iconHtml = `<i class="bi bi-globe bookmark-icon"></i>`;
@@ -265,6 +276,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             return exampleData;
+        }
+    }
+    
+    // 获取网站图标
+    function getFavicon(url) {
+        try {
+            const urlObj = new URL(url);
+            const hostname = urlObj.hostname;
+            
+            // 使用 Google 的 favicon 服务作为主要来源
+            const googleFavicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}`;
+            
+            // 尝试直接获取网站的 favicon
+            const siteFavicon = `${urlObj.protocol}//${hostname}/favicon.ico`;
+            
+            // 返回两个可能的图标URL
+            return {
+                google: googleFavicon,
+                site: siteFavicon
+            };
+        } catch (error) {
+            console.error('获取网站图标失败:', error);
+            return {
+                google: 'https://www.google.com/s2/favicons?domain=default',
+                site: null
+            };
         }
     }
     
