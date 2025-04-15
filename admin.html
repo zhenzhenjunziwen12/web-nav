@@ -25,6 +25,13 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>导航管理页面</h1>
             <div>
+                <button id="exportDataBtn" class="btn btn-outline-success me-2">
+                    <i class="bi bi-download"></i> 导出数据
+                </button>
+                <button id="importDataBtn" class="btn btn-outline-info me-2">
+                    <i class="bi bi-upload"></i> 导入数据
+                </button>
+                <input type="file" id="importDataFile" accept=".json" style="display: none;">
                 <button id="logoutBtn" class="btn btn-outline-danger me-2">
                     <i class="bi bi-box-arrow-right"></i> 退出登录
                 </button>
@@ -114,6 +121,26 @@
                                 密码修改失败，请检查当前密码是否正确，或新密码是否一致。
                             </div>
                         </form>
+                    </div>
+                </div>
+                
+                <!-- 同步状态 -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        数据同步状态
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3" id="syncStatus">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status" id="syncSpinner" style="display: none;">
+                                    <span class="visually-hidden">正在同步...</span>
+                                </div>
+                                <span id="syncMessage">数据已同步</span>
+                            </div>
+                        </div>
+                        <p class="small text-muted mb-0">
+                            通过Cloudflare KV存储实现的云端数据同步，确保您在任何设备上都能访问最新的书签和设置。
+                        </p>
                     </div>
                 </div>
             </div>
@@ -208,6 +235,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api-service.js"></script>
     <script src="js/admin.js"></script>
     <script src="js/background.js"></script>
     <script>

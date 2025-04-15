@@ -1,6 +1,18 @@
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化
-    function init() {
+    async function init() {
+        // 先尝试从API获取数据
+        if (window.ApiService) {
+            try {
+                const data = await ApiService.fetchData();
+                if (data && data.bookmarksData) {
+                    console.log('从云端加载数据成功');
+                }
+            } catch (error) {
+                console.error('从云端加载数据失败:', error);
+            }
+        }
+        
         loadCategories();
         loadBookmarkList();
         setupEventListeners();
@@ -38,6 +50,39 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             saveBookmark();
         });
+        
+        // 退出登录
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            sessionStorage.removeItem('isLoggedIn');
+            window.location.href = 'login.html';
+        });
+        
+        // 密码修改表单
+        const passwordForm = document.getElementById('changePasswordForm');
+        if (passwordForm) {
+            passwordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                changePassword();
+            });
+        }
+        
+        // 添加导入导出按钮事件
+        const exportBtn = document.getElementById('exportDataBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportData);
+        }
+        
+        const importBtn = document.getElementById('importDataBtn');
+        if (importBtn) {
+            importBtn.addEventListener('click', function() {
+                document.getElementById('importDataFile').click();
+            });
+        }
+        
+        const importFile = document.getElementById('importDataFile');
+        if (importFile) {
+            importFile.addEventListener('change', importData);
+        }
     }
     
     // 更新子分类选项
@@ -134,6 +179,93 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+    }
+    
+    // 导出数据
+    function exportData() {
+        const data = getBookmarksData();
+        const bgSettings = JSON.parse(localStorage.getItem('bgSettings') || '{}');
+        const adminAccount = JSON.parse(localStorage.getItem('adminAccount') || '{}');
+        
+        // 创建包含所有数据的对象
+        const exportData = {
+            bookmarksData: data,
+            bgSettings: bgSettings,
+            adminAccount: adminAccount,
+            version: '1.0',
+            exportDate: new Date().toISOString()
+        };
+        
+        // 转换为JSON并创建下载
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = 'navigation_backup_' + 
+            new Date().toISOString().slice(0, 10).replace(/-/g, '') + '.json';
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    }
+    
+    // 导入数据
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                
+                // 检查数据格式是否正确
+                if (!importedData.bookmarksData || !importedData.bookmarksData.categories) {
+                    alert('导入的数据格式不正确！');
+                    return;
+                }
+                
+                // 确认导入
+                if (confirm('确定要导入此备份数据吗？当前的所有数据将被替换。')) {
+                    // 保存数据
+                    localStorage.setItem('bookmarksData', JSON.stringify(importedData.bookmarksData));
+                    
+                    if (importedData.bgSettings) {
+                        localStorage.setItem('bgSettings', JSON.stringify(importedData.bgSettings));
+                    }
+                    
+                    if (importedData.adminAccount) {
+                        localStorage.setItem('adminAccount', JSON.stringify(importedData.adminAccount));
+                    }
+                    
+                    // 同时保存到云端
+                    if (window.ApiService) {
+                        ApiService.saveData({
+                            bookmarksData: importedData.bookmarksData,
+                            bgSettings: importedData.bgSettings
+                        });
+                        
+                        if (importedData.adminAccount) {
+                            ApiService.updateAdminAccount(
+                                importedData.adminAccount.username, 
+                                importedData.adminAccount.password
+                            );
+                        }
+                    }
+                    
+                    // 刷新页面
+                    alert('数据导入成功！页面将重新加载。');
+                    location.reload();
+                }
+            } catch (err) {
+                alert('导入失败，文件内容无效: ' + err.message);
+                console.error('导入错误:', err);
+            }
+        };
+        reader.readAsText(file);
+        
+        // 重置文件输入，以便可以重新选择同一文件
+        event.target.value = '';
     }
     
     // 加载书签列表
@@ -302,6 +434,55 @@ document.addEventListener('DOMContentLoaded', function() {
         loadBookmarkList();
         
         alert('书签添加成功！');
+    }
+    
+    // 修改密码
+    async function changePassword() {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        const successMessage = document.getElementById('passwordSuccessMessage');
+        const errorMessage = document.getElementById('passwordErrorMessage');
+        
+        // 隐藏消息
+        successMessage.style.display = 'none';
+        errorMessage.style.display = 'none';
+        
+        // 检查新密码是否一致
+        if (newPassword !== confirmPassword) {
+            errorMessage.style.display = 'block';
+            return;
+        }
+        
+        // 验证当前密码
+        const adminAccount = JSON.parse(localStorage.getItem('adminAccount'));
+        
+        if (adminAccount.password !== currentPassword) {
+            errorMessage.style.display = 'block';
+            return;
+        }
+        
+        // 更新密码
+        adminAccount.password = newPassword;
+        localStorage.setItem('adminAccount', JSON.stringify(adminAccount));
+        
+        // 同时更新到云端
+        if (window.ApiService) {
+            try {
+                await ApiService.updateAdminAccount(adminAccount.username, newPassword);
+            } catch (error) {
+                console.error('更新云端密码失败:', error);
+            }
+        }
+        
+        // 显示成功消息
+        successMessage.style.display = 'block';
+        
+        // 清空表单
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
     }
     
     // 编辑书签
@@ -498,8 +679,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 保存书签数据
-    function saveBookmarksData(data) {
+    async function saveBookmarksData(data) {
+        // 首先保存到本地
         localStorage.setItem('bookmarksData', JSON.stringify(data));
+        
+        // 然后保存到云端
+        if (window.ApiService) {
+            try {
+                await ApiService.saveData({ bookmarksData: data });
+            } catch (error) {
+                console.error('保存到云端失败:', error);
+            }
+        }
     }
     
     init();

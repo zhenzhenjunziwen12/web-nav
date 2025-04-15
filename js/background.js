@@ -42,7 +42,21 @@ document.addEventListener('DOMContentLoaded', function() {
     window.applyBgSettingsToUI = applyBgSettingsToUI;
     
     // 初始化
-    function init() {
+    async function init() {
+        // 先尝试从API获取背景设置
+        if (window.ApiService) {
+            try {
+                const data = await ApiService.fetchData();
+                if (data && data.bgSettings) {
+                    // 如果从云端获取到背景设置，更新本地存储
+                    localStorage.setItem('bgSettings', JSON.stringify(data.bgSettings));
+                    console.log('从云端加载背景设置成功');
+                }
+            } catch (error) {
+                console.error('从云端加载背景设置失败:', error);
+            }
+        }
+        
         loadBgSettings();
         applyBgSettingsToUI();
         setupEventListeners();
@@ -220,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 保存背景设置
-    function saveBgSettings() {
+    async function saveBgSettings() {
         // 确定当前选中的选项卡
         const activeTab = document.querySelector('.tab-pane.active');
         if (!activeTab) return;
@@ -247,6 +261,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 保存到localStorage
         localStorage.setItem('bgSettings', JSON.stringify(bgSettings));
+        
+        // 保存到云端
+        if (window.ApiService) {
+            try {
+                await ApiService.saveData({ bgSettings: bgSettings });
+                console.log('背景设置已保存到云端');
+            } catch (error) {
+                console.error('保存背景设置到云端失败:', error);
+            }
+        }
     }
     
     // 加载背景设置

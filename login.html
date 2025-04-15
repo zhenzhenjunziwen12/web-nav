@@ -37,11 +37,15 @@
                 <div class="alert alert-danger mt-3" id="errorMessage" style="display: none;">
                     用户名或密码错误！
                 </div>
+                <div class="alert alert-warning mt-3" id="offlineMessage" style="display: none;">
+                    当前处于离线模式，使用本地验证登录。
+                </div>
             </form>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api-service.js"></script>
     <script src="js/background.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -54,30 +58,72 @@
             // 检查是否已有管理员账号设置
             if (!localStorage.getItem('adminAccount')) {
                 localStorage.setItem('adminAccount', JSON.stringify(defaultAdmin));
+                // 初始化时也尝试保存到云端
+                if (window.ApiService) {
+                    ApiService.updateAdminAccount(defaultAdmin.username, defaultAdmin.password)
+                        .catch(error => console.error('初始化管理员账户失败:', error));
+                }
             }
             
             const loginForm = document.getElementById('loginForm');
             const errorMessage = document.getElementById('errorMessage');
+            const offlineMessage = document.getElementById('offlineMessage');
             
-            loginForm.addEventListener('submit', function(e) {
+            loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
                 const username = document.getElementById('username').value.trim();
                 const password = document.getElementById('password').value.trim();
                 
-                // 获取保存的管理员账号
-                const adminAccount = JSON.parse(localStorage.getItem('adminAccount'));
+                // 显示加载状态
+                const submitButton = this.querySelector('button[type="submit"]');
+                const originalText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 登录中...';
                 
-                if (username === adminAccount.username && password === adminAccount.password) {
-                    // 设置登录状态
-                    sessionStorage.setItem('isLoggedIn', 'true');
-                    // 跳转到管理页面
-                    window.location.href = 'admin.html';
-                } else {
-                    // 显示错误消息
-                    errorMessage.style.display = 'block';
-                    // 清空密码输入
-                    document.getElementById('password').value = '';
+                errorMessage.style.display = 'none';
+                offlineMessage.style.display = 'none';
+                
+                try {
+                    // 使用API服务登录
+                    const result = await ApiService.login(username, password);
+                    
+                    if (result.success) {
+                        // 设置登录状态
+                        sessionStorage.setItem('isLoggedIn', 'true');
+                        // 跳转到管理页面
+                        window.location.href = 'admin.html';
+                    } else {
+                        // 显示错误消息
+                        errorMessage.style.display = 'block';
+                        // 清空密码输入
+                        document.getElementById('password').value = '';
+                    }
+                } catch (error) {
+                    console.error('登录错误:', error);
+                    
+                    // 尝试本地验证
+                    const adminAccount = JSON.parse(localStorage.getItem('adminAccount'));
+                    
+                    if (username === adminAccount.username && password === adminAccount.password) {
+                        // 设置登录状态
+                        sessionStorage.setItem('isLoggedIn', 'true');
+                        // 显示离线提示
+                        offlineMessage.style.display = 'block';
+                        // 延迟跳转，让用户看到提示
+                        setTimeout(() => {
+                            window.location.href = 'admin.html';
+                        }, 1500);
+                    } else {
+                        // 显示错误消息
+                        errorMessage.style.display = 'block';
+                        // 清空密码输入
+                        document.getElementById('password').value = '';
+                    }
+                } finally {
+                    // 恢复按钮状态
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
                 }
             });
         });

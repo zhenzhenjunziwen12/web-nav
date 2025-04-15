@@ -25,7 +25,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: -999;
+    z-index: -1; /* 确保在最底层 */
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -43,7 +43,7 @@ body {
     padding: 0;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     position: relative;
-    z-index: 1;
+    z-index: 5; /* 确保在背景之上，但不高于主内容区 */
 }
 
 .sidebar h3 {
@@ -119,7 +119,7 @@ body {
     background-color: rgba(255, 255, 255, 1); /* 完全不透明，避免背景干扰 */
     min-height: 100vh;
     position: relative;
-    z-index: 1;
+    z-index: 10; /* 提高z-index确保在背景上方 */
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); /* 添加阴影，增强层次感 */
 }
 
@@ -238,7 +238,7 @@ body {
 /* 容器样式，确保内容在背景之上 */
 .container, .container-fluid {
     position: relative;
-    z-index: 1;
+    z-index: 10; /* 提高z-index与主内容区一致 */
 }
 
 /* 书签卡片内的链接样式 */

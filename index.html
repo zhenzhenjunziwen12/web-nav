@@ -14,12 +14,14 @@
             background-attachment: fixed;
             will-change: transform; /* 性能优化 */
             backface-visibility: hidden; /* 性能优化 */
+            z-index: -1; /* 确保背景在最底层 */
         }
         
         /* 提高主内容区对比度 */
         .main-content {
-            background-color: rgba(255, 255, 255, 0.97);
+            background-color: rgba(255, 255, 255, 1);
             /* 移除模糊效果 */
+            z-index: 10; /* 提高z-index确保在背景上方 */
         }
         
         /* 确保卡片完全不透明 */
@@ -144,6 +146,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api-service.js"></script>
     <script src="js/main.js"></script>
     <script src="js/background.js"></script>
     <script>
@@ -199,6 +202,12 @@
                     dim: 15 // 稍微暗化一点，以便内容更加清晰
                 };
                 localStorage.setItem('bgSettings', JSON.stringify(defaultBgSettings));
+                
+                // 尝试保存到云端
+                if (window.ApiService) {
+                    ApiService.saveData({ bgSettings: defaultBgSettings })
+                        .catch(error => console.error('保存默认背景设置到云端失败:', error));
+                }
                 
                 // 如果background.js已经加载，应用设置
                 if (typeof applyBgSettingsToUI === 'function') {

@@ -11,7 +11,19 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     // 初始化
-    function init() {
+    async function init() {
+        // 先尝试从API获取数据
+        if (window.ApiService) {
+            try {
+                const data = await ApiService.fetchData();
+                if (data && data.bookmarksData) {
+                    console.log('从云端加载数据成功');
+                }
+            } catch (error) {
+                console.error('从云端加载数据失败:', error);
+            }
+        }
+        
         loadCategories();
         loadBookmarks();
         setupEventListeners();
@@ -223,6 +235,13 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 保存示例数据到localStorage
             localStorage.setItem('bookmarksData', JSON.stringify(exampleData));
+            
+            // 同时尝试保存到云端
+            if (window.ApiService) {
+                ApiService.saveData({ bookmarksData: exampleData })
+                    .catch(error => console.error('保存示例数据到云端失败:', error));
+            }
+            
             return exampleData;
         }
     }
