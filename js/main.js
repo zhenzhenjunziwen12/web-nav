@@ -141,12 +141,34 @@ document.addEventListener('DOMContentLoaded', function() {
             const card = document.createElement('div');
             card.className = 'col-md-3 col-sm-6 mb-4';
             
-            const icon = bookmark.icon || 'bi-globe';
+            // 处理不同类型的图标
+            let iconHtml = '';
+            if (bookmark.icon) {
+                if (typeof bookmark.icon === 'object' && bookmark.icon.type === 'favicon') {
+                    // 使用实际的favicon图像
+                    iconHtml = `<img src="${bookmark.icon.value}" alt="${bookmark.title}" class="bookmark-icon mb-3" style="width: 48px; height: 48px;">`;
+                } else if (typeof bookmark.icon === 'object' && bookmark.icon.type === 'bootstrap') {
+                    // 使用Bootstrap图标
+                    iconHtml = `<i class="bi ${bookmark.icon.value} bookmark-icon"></i>`;
+                } else if (typeof bookmark.icon === 'string' && bookmark.icon.startsWith('bi-')) {
+                    // 兼容旧数据，使用Bootstrap图标字符串
+                    iconHtml = `<i class="bi ${bookmark.icon} bookmark-icon"></i>`;
+                } else if (typeof bookmark.icon === 'string' && (bookmark.icon.startsWith('http') || bookmark.icon.startsWith('data:'))) {
+                    // 兼容旧数据，使用图像URL
+                    iconHtml = `<img src="${bookmark.icon}" alt="${bookmark.title}" class="bookmark-icon mb-3" style="width: 48px; height: 48px;">`;
+                } else {
+                    // 默认使用全球图标
+                    iconHtml = `<i class="bi bi-globe bookmark-icon"></i>`;
+                }
+            } else {
+                // 没有图标时使用默认图标
+                iconHtml = `<i class="bi bi-globe bookmark-icon"></i>`;
+            }
             
             card.innerHTML = `
                 <div class="card bookmark-card h-100 text-center p-3">
                     <div class="card-body">
-                        <i class="bi ${icon} bookmark-icon"></i>
+                        ${iconHtml}
                         <h5 class="bookmark-title">${bookmark.title}</h5>
                         <p class="bookmark-description">${bookmark.description || ''}</p>
                         <a href="${bookmark.url}" target="_blank" class="btn btn-sm btn-primary mt-2">访问</a>
@@ -201,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat1',
                         subcategoryId: 'sub1',
                         description: '中国最大的搜索引擎',
-                        icon: 'bi-search'
+                        icon: { type: 'bootstrap', value: 'bi-search' }
                     },
                     {
                         id: 'bm2',
@@ -210,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat1',
                         subcategoryId: 'sub2',
                         description: '全球最大的搜索引擎',
-                        icon: 'bi-google'
+                        icon: { type: 'bootstrap', value: 'bi-google' }
                     },
                     {
                         id: 'bm3',
@@ -219,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat2',
                         subcategoryId: 'sub3',
                         description: '中国知名的视频弹幕网站',
-                        icon: 'bi-play-circle'
+                        icon: { type: 'bootstrap', value: 'bi-play-circle' }
                     },
                     {
                         id: 'bm4',
@@ -228,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat3',
                         subcategoryId: 'sub5',
                         description: '全球最大的代码托管平台',
-                        icon: 'bi-github'
+                        icon: { type: 'bootstrap', value: 'bi-github' }
                     }
                 ]
             };

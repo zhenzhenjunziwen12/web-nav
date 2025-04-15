@@ -289,9 +289,33 @@ document.addEventListener('DOMContentLoaded', function() {
             const bookmarkItem = document.createElement('div');
             bookmarkItem.className = 'bookmark-item';
             
+            // 根据图标类型（bootstrap图标或实际favicon）生成不同的图标HTML
+            let iconHtml = '';
+            if (bookmark.icon) {
+                if (typeof bookmark.icon === 'object' && bookmark.icon.type === 'favicon') {
+                    // 使用实际的favicon图像
+                    iconHtml = `<img src="${bookmark.icon.value}" alt="${bookmark.title}" class="favicon-icon me-2" style="width: 16px; height: 16px;">`;
+                } else if (typeof bookmark.icon === 'object' && bookmark.icon.type === 'bootstrap') {
+                    // 使用Bootstrap图标
+                    iconHtml = `<i class="bi ${bookmark.icon.value} me-2"></i>`;
+                } else if (typeof bookmark.icon === 'string' && bookmark.icon.startsWith('bi-')) {
+                    // 兼容旧数据，使用Bootstrap图标字符串
+                    iconHtml = `<i class="bi ${bookmark.icon} me-2"></i>`;
+                } else if (typeof bookmark.icon === 'string' && (bookmark.icon.startsWith('http') || bookmark.icon.startsWith('data:'))) {
+                    // 兼容旧数据，使用图像URL
+                    iconHtml = `<img src="${bookmark.icon}" alt="${bookmark.title}" class="favicon-icon me-2" style="width: 16px; height: 16px;">`;
+                } else {
+                    // 默认使用全球图标
+                    iconHtml = `<i class="bi bi-globe me-2"></i>`;
+                }
+            } else {
+                // 没有图标时使用默认图标
+                iconHtml = `<i class="bi bi-globe me-2"></i>`;
+            }
+            
             bookmarkItem.innerHTML = `
                 <div>
-                    <strong>${bookmark.title}</strong>
+                    <strong>${iconHtml}${bookmark.title}</strong>
                     <div class="small text-muted">
                         ${category ? category.name : '未知分类'} > ${subcategory ? subcategory.name : '未知子分类'}
                     </div>
@@ -408,7 +432,7 @@ document.addEventListener('DOMContentLoaded', function() {
             categoryId: categoryId,
             subcategoryId: subcategoryId,
             description: description,
-            icon: icon || 'bi-globe' // 默认图标
+            icon: icon || { type: 'bootstrap', value: 'bi-globe' } // 修改为对象格式
         };
         
         // 如果用户没有指定图标，尝试获取网站favicon
@@ -430,9 +454,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 尝试获取网站favicon
             getFavicon(domain)
-                .then(iconClass => {
-                    if (iconClass) {
-                        newBookmark.icon = iconClass;
+                .then(iconObj => {
+                    if (iconObj) {
+                        newBookmark.icon = iconObj;
                     }
                     // 无论成功与否都保存书签
                     finalizeBookmarkSave(data, newBookmark);
@@ -449,7 +473,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     saveButton.disabled = false;
                 });
         } else {
-            // 用户指定了图标，直接保存
+            // 用户指定了图标，将其转换为对象格式
+            if (typeof icon === 'string') {
+                if (icon.startsWith('bi-')) {
+                    newBookmark.icon = { type: 'bootstrap', value: icon };
+                } else if (icon.startsWith('http') || icon.startsWith('data:')) {
+                    newBookmark.icon = { type: 'favicon', value: icon };
+                }
+            }
+            // 直接保存
             finalizeBookmarkSave(data, newBookmark);
             resetForm();
         }
@@ -500,12 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 获取网站favicon
     async function getFavicon(domain) {
         try {
-            // 首先尝试使用Google的favicon服务
-            // 检查图标是否存在
-            const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-            
-            // 因为我们不能直接检查图片是否加载成功，我们将使用自定义图标
-            // 为常见网站匹配Bootstrap图标
+            // 首先检查是否有预定义的Bootstrap图标
             const iconMappings = {
                 'google.com': 'bi-google',
                 'gmail.com': 'bi-envelope-fill',
@@ -548,18 +575,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 'zhihu.com': 'bi-question-circle'
             };
             
-            // 检查域名是否在我们的映射中
+            // 检查域名是否在预定义的映射中
             for (const [key, value] of Object.entries(iconMappings)) {
                 if (domain.includes(key)) {
-                    return value;
+                    return { type: 'bootstrap', value: value };
                 }
             }
             
-            // 对于大多数网站，使用有效的favicon的URL作为图标
-            return 'bi-globe';
+            // 如果没有预定义图标，使用Google的favicon服务获取实际图标URL
+            const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+            
+            // 返回实际的favicon URL
+            return { type: 'favicon', value: faviconUrl };
         } catch (e) {
             console.error('获取favicon时出错:', e);
-            return 'bi-globe'; // 默认图标
+            return { type: 'bootstrap', value: 'bi-globe' }; // 默认图标
         }
     }
     
@@ -623,7 +653,22 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('bookmarkTitle').value = bookmark.title;
         document.getElementById('bookmarkUrl').value = bookmark.url;
         document.getElementById('bookmarkDescription').value = bookmark.description || '';
-        document.getElementById('bookmarkIcon').value = bookmark.icon || '';
+        
+        // 处理图标数据
+        const iconInput = document.getElementById('bookmarkIcon');
+        if (bookmark.icon) {
+            if (typeof bookmark.icon === 'object') {
+                if (bookmark.icon.type === 'bootstrap') {
+                    iconInput.value = bookmark.icon.value;
+                } else if (bookmark.icon.type === 'favicon') {
+                    iconInput.value = bookmark.icon.value;
+                }
+            } else if (typeof bookmark.icon === 'string') {
+                iconInput.value = bookmark.icon;
+            }
+        } else {
+            iconInput.value = '';
+        }
         
         // 选择分类
         const categorySelect = document.getElementById('bookmarkCategory');
@@ -767,7 +812,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat1',
                         subcategoryId: 'sub1',
                         description: '中国最大的搜索引擎',
-                        icon: 'bi-search'
+                        icon: { type: 'bootstrap', value: 'bi-search' }
                     },
                     {
                         id: 'bm2',
@@ -776,7 +821,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat1',
                         subcategoryId: 'sub2',
                         description: '全球最大的搜索引擎',
-                        icon: 'bi-google'
+                        icon: { type: 'bootstrap', value: 'bi-google' }
                     },
                     {
                         id: 'bm3',
@@ -785,7 +830,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat2',
                         subcategoryId: 'sub3',
                         description: '中国知名的视频弹幕网站',
-                        icon: 'bi-play-circle'
+                        icon: { type: 'bootstrap', value: 'bi-play-circle' }
                     },
                     {
                         id: 'bm4',
@@ -794,7 +839,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         categoryId: 'cat3',
                         subcategoryId: 'sub5',
                         description: '全球最大的代码托管平台',
-                        icon: 'bi-github'
+                        icon: { type: 'bootstrap', value: 'bi-github' }
                     }
                 ]
             };
