@@ -188,13 +188,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const clicks = parseInt(localStorage.getItem(`clicks_${bookmark.id}`) || '0');
             
             card.innerHTML = `
-                <div class="card bookmark-card h-100 text-center p-3">
+                <div class="card bookmark-card h-100 text-center p-3" style="cursor: pointer;" id="bookmark_card_${bookmark.id}">
                     <div class="card-body">
                         ${iconHtml}
                         <h5 class="bookmark-title">${bookmark.title}</h5>
                         <p class="bookmark-description">${bookmark.description || ''}</p>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <a href="${bookmark.url}" target="_blank" class="btn btn-sm btn-primary" id="visit_${bookmark.id}">访问</a>
+                        <div class="text-end">
                             <small class="text-muted">访问次数: <span id="clicks_${bookmark.id}">${clicks}</span></small>
                         </div>
                     </div>
@@ -203,10 +202,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             container.appendChild(card);
             
-            // 为访问按钮添加点击事件
-            const visitButton = document.getElementById(`visit_${bookmark.id}`);
-            visitButton.addEventListener('click', function(e) {
-                e.preventDefault(); // 阻止默认行为
+            // 为整个卡片添加点击事件
+            const bookmarkCard = document.getElementById(`bookmark_card_${bookmark.id}`);
+            bookmarkCard.addEventListener('click', function() {
                 incrementClicks(bookmark.id);
                 window.open(bookmark.url, '_blank'); // 在新标签页打开链接
             });
